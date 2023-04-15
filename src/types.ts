@@ -1,0 +1,4 @@
+export type Env = {
+  DB: D1Database;
+  FIREBASE_WEB_API_KEY: string;
+};
