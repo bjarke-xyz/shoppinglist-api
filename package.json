@@ -17,7 +17,9 @@
     "migrate-local": "wrangler d1 migrations apply DB --local"
   },
   "dependencies": {
+    "date-fns": "^2.29.3",
     "hono": "^3.1.5",
+    "jose": "^4.14.0",
     "jwt-decode": "^3.1.2"
   }
 }
