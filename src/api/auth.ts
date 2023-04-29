@@ -9,7 +9,6 @@ const logger = getLogger("api.auth");
 
 export function authMiddleware() {
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
-    console.log(c.req.path);
     const authorizationHeader = c.req.header("Authorization");
     if (!authorizationHeader) {
       return c.text("no token provided", 401);
