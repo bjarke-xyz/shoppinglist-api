@@ -3,18 +3,18 @@ import { Env } from "../types";
 import { DbError } from "../util/db-error";
 import { nanoid } from "nanoid";
 
-export class ItemsRepository {
+export class ListsRepository {
   constructor(private readonly db: D1Database) {}
-  public static New(env: Env): ItemsRepository {
-    return new ItemsRepository(env.DB);
+  public static New(env: Env): ListsRepository {
+    return new ListsRepository(env.DB);
   }
 
-  public async getItems(userId: string): Promise<Item[]> {
+  public async getLists(userId: string): Promise<List[]> {
     try {
       const result = await this.db
-        .prepare("SELECT * FROM items WHERE userId = ?")
+        .prepare("SELECT * FROM lists WHERE userId = ?")
         .bind(userId)
-        .all<ItemDto>();
+        .all<ListDto>();
       if (result.success && result.results) {
         return result.results.map(mapDto);
       } else {
@@ -25,12 +25,12 @@ export class ItemsRepository {
     }
   }
 
-  public async getItem(userId: string, itemId: string): Promise<Item | null> {
+  public async getList(userId: string, listId: string): Promise<List | null> {
     try {
       const result = await this.db
-        .prepare("SELECT * FROM items WHERE userId = ?1 and id = ?2")
-        .bind(userId, itemId)
-        .all<ItemDto>();
+        .prepare("SELECT * FROM lists WHERE userId = ?1 and id = ?2")
+        .bind(userId, listId)
+        .all<ListDto>();
       if (result.success && result.results) {
         return result.results.map(mapDto)[0] ?? null;
       } else {
@@ -41,7 +41,7 @@ export class ItemsRepository {
     }
   }
 
-  public async createItem(userId: string, name: string): Promise<Item> {
+  public async createList(userId: string, name: string): Promise<List> {
     const dto = mapEntity({
       id: nanoid(),
       userId,
@@ -51,7 +51,7 @@ export class ItemsRepository {
     try {
       const result = await this.db
         .prepare(
-          "INSERT INTO items (id, userId, name, createdAt) values (?1, ?2, ?3, ?4)"
+          "INSERT INTO lists (id, userId, name, createdAt) values (?1, ?2, ?3, ?4)"
         )
         .bind(dto.id, dto.userId, dto.name, dto.createdAt)
         .run();
@@ -65,37 +65,51 @@ export class ItemsRepository {
     }
   }
 
-  public async updateItem(
+  public async updateList(
     userId: string,
-    itemId: string,
+    listId: string,
     name: string
-  ): Promise<Item> {
+  ): Promise<List> {
     try {
       const result = await this.db
-        .prepare("UPDATE items SET name = ?1 WHERE userId = ?2 AND id = ?3")
-        .bind(name, userId, itemId)
+        .prepare("UPDATE lists SET name = ?1 WHERE userId = ?2 AND id = ?3")
+        .bind(name, userId, listId)
         .run();
       if (result.error) {
         throw DbError.new(result);
       }
-      const updatedItem = await this.getItem(userId, itemId);
-      if (updatedItem == null) {
-        throw new Error("Updated item was null");
+      const updatedList = await this.getList(userId, listId);
+      if (updatedList == null) {
+        throw new Error("Updated list was null");
       }
-      return updatedItem;
+      return updatedList;
     } catch (error: any) {
       throw DbError.new(null, error);
     }
   }
 
-  public async deleteItem(userId: string, itemId: string): Promise<void> {
+  public async deleteList(userId: string, listId: string): Promise<void> {
     try {
       const result = await this.db
-        .prepare("DELETE FROM items WHERE userId = ?1 AND id = ?2")
-        .bind(userId, itemId)
+        .prepare("DELETE FROM lists WHERE userId = ?1 AND id = ?2")
+        .bind(userId, listId)
         .run();
       if (result.error) {
         throw DbError.new(result);
+      }
+    } catch (error: any) {
+      throw DbError.new(null, error);
+    }
+  }
+
+  public async addToList(listId: string, itemId: string): Promise<void> {
+    try {
+      const existingListItem = await this.db
+        .prepare("SELECT * FROM list_items WHERE listId = ?1 and itemId = ?2")
+        .bind(listId, itemId)
+        .run();
+      if (existingListItem.error) {
+        throw DbError.new(existingListItem);
       }
     } catch (error: any) {
       throw DbError.new(null, error);
@@ -103,26 +117,26 @@ export class ItemsRepository {
   }
 }
 
-function mapEntity(entity: Item): ItemDto {
+function mapEntity(entity: List): ListDto {
   return {
     ...entity,
     createdAt: formatISO(entity.createdAt),
   };
 }
-export interface Item {
+export interface List {
   id: string;
   userId: string;
   name: string;
   createdAt: Date;
 }
 
-function mapDto(dto: ItemDto): Item {
+function mapDto(dto: ListDto): List {
   return {
     ...dto,
     createdAt: parseISO(dto.createdAt),
   };
 }
-export interface ItemDto {
+export interface ListDto {
   id: string;
   userId: string;
   name: string;
