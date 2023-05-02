@@ -9,14 +9,27 @@ export class ListsRepository {
     return new ListsRepository(env.DB);
   }
 
-  public async getLists(userId: string): Promise<List[]> {
+  public async getLists(
+    userId: string,
+    listId: string | null = null
+  ): Promise<List[]> {
     try {
-      const result = await this.db
-        .prepare("SELECT * FROM lists WHERE userId = ?")
-        .bind(userId)
-        .all<ListDto>();
+      const listIdWhere = listId ? " AND listId = ?" : "";
+      let stmt = this.db
+        .prepare(
+          `SELECT l.*, li.itemId, i.name as itemName, li.count as liCount, li.createdAt as liCreatedAt, li.updatedAt as liUpdatedAt FROM lists l
+           LEFT JOIN list_items li ON li.listId = l.id
+           LEFT JOIN items i on i.id = li.itemId
+           WHERE l.userId = ? ${listIdWhere}`
+        )
+        .bind(userId);
+      if (listId) {
+        stmt = stmt.bind(userId, listId);
+      }
+      const result = await stmt.all<ListWithItemsDto>();
+      console.log(result);
       if (result.success && result.results) {
-        return result.results.map(mapDto);
+        return mapListWithItemsDto(result.results);
       } else {
         throw DbError.new(result);
       }
@@ -26,19 +39,8 @@ export class ListsRepository {
   }
 
   public async getList(userId: string, listId: string): Promise<List | null> {
-    try {
-      const result = await this.db
-        .prepare("SELECT * FROM lists WHERE userId = ?1 and id = ?2")
-        .bind(userId, listId)
-        .all<ListDto>();
-      if (result.success && result.results) {
-        return result.results.map(mapDto)[0] ?? null;
-      } else {
-        throw DbError.new(result);
-      }
-    } catch (error: any) {
-      throw DbError.new(null, error);
-    }
+    const lists = await this.getLists(userId, listId);
+    return lists?.[0] ?? null;
   }
 
   public async createList(userId: string, name: string): Promise<List> {
@@ -47,6 +49,7 @@ export class ListsRepository {
       userId,
       name,
       createdAt: new Date(),
+      items: [],
     });
     try {
       const result = await this.db
@@ -102,14 +105,53 @@ export class ListsRepository {
     }
   }
 
+  public async getListItems(listId: string): Promise<ListItem[]> {
+    try {
+      const result = await this.db
+        .prepare(
+          `SELECT li.*, i.name as itemName FROM list_items li
+           INNER JOIN items i ON i.id = li.itemId
+           WHERE listId = ?`
+        )
+        .bind(listId)
+        .all<ListItemDto>();
+      if (result.success && result.results) {
+        return result.results.map(mapDtoListItem);
+      } else {
+        throw DbError.new(result);
+      }
+    } catch (error: any) {
+      throw DbError.new(null, error);
+    }
+  }
+
   public async addToList(listId: string, itemId: string): Promise<void> {
     try {
       const existingListItem = await this.db
         .prepare("SELECT * FROM list_items WHERE listId = ?1 and itemId = ?2")
         .bind(listId, itemId)
-        .run();
+        .all();
       if (existingListItem.error) {
         throw DbError.new(existingListItem);
+      }
+      const now = new Date();
+      const nowStr = formatISO(now);
+      let sql = "";
+      let result: D1Result<unknown>;
+      if (existingListItem.results && existingListItem.results?.length > 0) {
+        sql =
+          "UPDATE list_items SET count = count + 1, updatedAt = ?1 WHERE listId = ?2 AND itemId = ?3";
+        result = await this.db.prepare(sql).bind(nowStr, listId, itemId).run();
+      } else {
+        sql =
+          "INSERT INTO list_items (listId, itemId, count, createdAt, updatedAt) VALUES (?1, ?2, ?3, ?4, ?5)";
+        result = await this.db
+          .prepare(sql)
+          .bind(listId, itemId, 1, nowStr, nowStr)
+          .run();
+      }
+      if (result.error) {
+        throw DbError.new(result);
       }
     } catch (error: any) {
       throw DbError.new(null, error);
@@ -123,22 +165,102 @@ function mapEntity(entity: List): ListDto {
     createdAt: formatISO(entity.createdAt),
   };
 }
+function mapEntityListItem(entity: ListItem): ListItemDto {
+  return {
+    ...entity,
+    createdAt: formatISO(entity.createdAt),
+    updatedAt: formatISO(entity.updatedAt),
+  };
+}
 export interface List {
   id: string;
   userId: string;
   name: string;
   createdAt: Date;
+
+  items: ListItem[];
+}
+
+export interface ListItem {
+  listId: string;
+  itemId: string;
+  itemName: string;
+  count: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+function mapListWithItemsDto(dtos: ListWithItemsDto[]): List[] {
+  const result: List[] = [];
+
+  for (const dto of dtos) {
+    let list = result.find((x) => x.id === dto.id);
+    if (!list) {
+      list = {
+        id: dto.id,
+        userId: dto.userId,
+        name: dto.name,
+        createdAt: parseISO(dto.createdAt),
+        items: [],
+      };
+      result.push(list);
+    }
+    const listItem: ListItem = {
+      listId: list.id,
+      itemId: dto.itemId,
+      itemName: dto.itemName,
+      count: dto.liCount,
+      createdAt: parseISO(dto.liCreatedAt),
+      updatedAt: parseISO(dto.liUpdatedAt),
+    };
+    list.items.push(listItem);
+  }
+
+  return result;
 }
 
 function mapDto(dto: ListDto): List {
   return {
     ...dto,
     createdAt: parseISO(dto.createdAt),
+    items: [],
   };
 }
+function mapDtoListItem(dto: ListItemDto): ListItem {
+  return {
+    ...dto,
+    createdAt: parseISO(dto.createdAt),
+    updatedAt: parseISO(dto.updatedAt),
+    itemName: dto.itemName,
+  };
+}
+
 export interface ListDto {
   id: string;
   userId: string;
   name: string;
   createdAt: string;
+}
+
+export interface ListWithItemsDto {
+  id: string;
+  userId: string;
+  name: string;
+  createdAt: string;
+
+  // From join
+  itemId: string;
+  itemName: string;
+  liCount: number;
+  liCreatedAt: string;
+  liUpdatedAt: string;
+}
+
+export interface ListItemDto {
+  listId: string;
+  itemId: string;
+  itemName: string;
+  count: number;
+  createdAt: string;
+  updatedAt: string;
 }

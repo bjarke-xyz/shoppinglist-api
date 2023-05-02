@@ -41,6 +41,25 @@ export class ItemsRepository {
     }
   }
 
+  public async getItemByName(
+    userId: string,
+    itemName: string
+  ): Promise<Item | null> {
+    try {
+      const result = await this.db
+        .prepare("SELECT * FROM items WHERE userId = ?1 and name = ?2")
+        .bind(userId, itemName)
+        .all<ItemDto>();
+      if (result.success && result.results) {
+        return result.results.map(mapDto)[0] ?? null;
+      } else {
+        throw DbError.new(result);
+      }
+    } catch (error: any) {
+      throw DbError.new(null, error);
+    }
+  }
+
   public async createItem(userId: string, name: string): Promise<Item> {
     const dto = mapEntity({
       id: nanoid(),
