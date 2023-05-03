@@ -10,6 +10,7 @@
   "private": true,
   "scripts": {
     "dev": "export NO_D1_WARNING=true && wrangler dev --local --persist",
+    "dev-not-local": "export NO_D1_WARNING=true && wrangler dev",
     "deploy": "wrangler publish",
     "test": "vitest",
     "migrate": "export NO_D1_WARNING=true && wrangler d1 migrations apply DB",

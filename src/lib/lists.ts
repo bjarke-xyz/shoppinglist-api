@@ -14,20 +14,19 @@ export class ListsRepository {
     listId: string | null = null
   ): Promise<List[]> {
     try {
-      const listIdWhere = listId ? " AND listId = ?" : "";
+      const listIdWhere = listId ? " AND l.id = ?2" : "";
       let stmt = this.db
         .prepare(
           `SELECT l.*, li.itemId, i.name as itemName, li.count as liCount, li.createdAt as liCreatedAt, li.updatedAt as liUpdatedAt FROM lists l
            LEFT JOIN list_items li ON li.listId = l.id
            LEFT JOIN items i on i.id = li.itemId
-           WHERE l.userId = ? ${listIdWhere}`
+           WHERE l.userId = ?1 ${listIdWhere}`
         )
         .bind(userId);
       if (listId) {
         stmt = stmt.bind(userId, listId);
       }
       const result = await stmt.all<ListWithItemsDto>();
-      console.log(result);
       if (result.success && result.results) {
         return mapListWithItemsDto(result.results);
       } else {
