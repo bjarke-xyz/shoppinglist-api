@@ -205,15 +205,17 @@ function mapListWithItemsDto(dtos: ListWithItemsDto[]): List[] {
       };
       result.push(list);
     }
-    const listItem: ListItem = {
-      listId: list.id,
-      itemId: dto.itemId,
-      itemName: dto.itemName,
-      count: dto.liCount,
-      createdAt: parseISO(dto.liCreatedAt),
-      updatedAt: parseISO(dto.liUpdatedAt),
-    };
-    list.items.push(listItem);
+    if (dto.itemId) {
+      const listItem: ListItem = {
+        listId: list.id,
+        itemId: dto.itemId,
+        itemName: dto.itemName,
+        count: dto.liCount,
+        createdAt: parseISO(dto.liCreatedAt),
+        updatedAt: parseISO(dto.liUpdatedAt),
+      };
+      list.items.push(listItem);
+    }
   }
 
   return result;

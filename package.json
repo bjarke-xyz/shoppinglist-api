@@ -12,10 +12,10 @@
     "dev": "export NO_D1_WARNING=true && wrangler dev --local --persist",
     "deploy": "wrangler publish",
     "test": "vitest",
-    "migrate": "wrangler d1 migrations apply DB",
-    "migrate-local": "wrangler d1 migrations apply DB --local",
-    "sql-command": "wrangler d1 execute DB --command",
-    "sql-command-local": "wrangler d1 execute DB --local --command"
+    "migrate": "export NO_D1_WARNING=true && wrangler d1 migrations apply DB",
+    "migrate-local": "export NO_D1_WARNING=true && wrangler d1 migrations apply DB --local",
+    "sql-command": "export NO_D1_WARNING=true && wrangler d1 execute DB --command",
+    "sql-command-local": "export NO_D1_WARNING=true && wrangler d1 execute DB --local --command"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.1.2",
