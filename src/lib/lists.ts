@@ -17,7 +17,7 @@ export class ListsRepository {
   ): void {
     const logger = getLogger("ListsRepository");
     const end = new Date();
-    const duration = (end.getDate() - start.getDate()).toFixed(2);
+    const duration = end.getTime() - start.getTime();
     logger.info("SQL INFO: ", stmt, result, { duration });
   }
 
