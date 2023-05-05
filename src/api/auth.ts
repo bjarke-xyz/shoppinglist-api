@@ -9,6 +9,7 @@ const logger = getLogger("api.auth");
 
 export function authMiddleware() {
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
+    logger.info("auth start");
     const authorizationHeader = c.req.header("Authorization");
     if (!authorizationHeader) {
       return c.text("no token provided", 401);
@@ -28,6 +29,7 @@ export function authMiddleware() {
     const decodedJwt = firebaseAuth.decodeIdToken(idToken);
     setUserInfo(c, decodedJwt);
 
+    logger.info("auth stop");
     await next();
   };
 }
