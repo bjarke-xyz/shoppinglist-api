@@ -109,8 +109,8 @@ listsApi.post(
 );
 
 // Delete item from list
-listsApi.delete(
-  "/:id/items/",
+listsApi.patch(
+  "/:id/items/delete",
   zValidator("json", z.object({ itemIds: z.array(z.string()) })),
   async (c) => {
     const user = getUserInfo(c);

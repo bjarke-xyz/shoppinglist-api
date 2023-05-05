@@ -192,9 +192,10 @@ export class ListsRepository {
     }
     try {
       const start = new Date();
-      const sql = "DELETE FROM list_items WHERE listId = ?1 and itemId in (?2)";
-      const itemIdsStr = itemIds.join(",");
-      const stmt = this.db.prepare(sql).bind(listId, itemIdsStr);
+      // +2 to start at 1, and listId uses ?1
+      const itemIdQuestionMarks = itemIds.map((_, i) => `?${i + 2}`).join(",");
+      const sql = `DELETE FROM list_items WHERE listId = ?1 and itemId IN (${itemIdQuestionMarks})`;
+      const stmt = this.db.prepare(sql).bind(listId, ...itemIds);
       const result = await stmt.run();
       this.logSql(start, stmt, result);
       if (result.error) {
