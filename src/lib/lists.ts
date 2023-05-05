@@ -17,7 +17,7 @@ export class ListsRepository {
       const listIdWhere = listId ? " AND l.id = ?2" : "";
       let stmt = this.db
         .prepare(
-          `SELECT l.*, li.itemId, i.name as itemName, li.count as liCount, li.createdAt as liCreatedAt, li.updatedAt as liUpdatedAt FROM lists l
+          `SELECT l.*, li.itemId, i.name as itemName, li.count as liCount, li.crossed as liCrossed, li.createdAt as liCreatedAt, li.updatedAt as liUpdatedAt FROM lists l
            LEFT JOIN list_items li ON li.listId = l.id
            LEFT JOIN items i on i.id = li.itemId
            WHERE l.userId = ?1 ${listIdWhere}`
@@ -156,6 +156,46 @@ export class ListsRepository {
       throw DbError.new(null, error);
     }
   }
+
+  public async removeFromList(
+    listId: string,
+    itemIds: string[]
+  ): Promise<void> {
+    if (!itemIds || itemIds.length === 0) {
+      return;
+    }
+    try {
+      const sql = "DELETE FROM list_items WHERE listId = ?1 and itemId in (?2)";
+      const itemIdsStr = itemIds.join(",");
+      const result = await this.db.prepare(sql).bind(listId, itemIdsStr).run();
+      if (result.error) {
+        throw DbError.new(result);
+      }
+    } catch (error: any) {
+      throw DbError.new(null, error);
+    }
+  }
+
+  public async crossListItem(
+    listId: string,
+    itemId: string,
+    crossed: boolean
+  ): Promise<void> {
+    try {
+      const sql =
+        "UPDATE list_items SET crossed = ?1, updatedAt = ?2 WHERE listId = ?3 AND itemId = ?4";
+      const crossedNumber = crossed ? 1 : 0;
+      const result = await this.db
+        .prepare(sql)
+        .bind(crossedNumber, formatISO(new Date()), listId, itemId)
+        .run();
+      if (result.error) {
+        throw DbError.new(result);
+      }
+    } catch (error: any) {
+      throw DbError.new(null, error);
+    }
+  }
 }
 
 function mapEntity(entity: List): ListDto {
@@ -169,6 +209,7 @@ function mapEntityListItem(entity: ListItem): ListItemDto {
     ...entity,
     createdAt: formatISO(entity.createdAt),
     updatedAt: formatISO(entity.updatedAt),
+    crossed: entity.crossed ? 1 : 0,
   };
 }
 export interface List {
@@ -185,6 +226,7 @@ export interface ListItem {
   itemId: string;
   itemName: string;
   count: number;
+  crossed: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -210,6 +252,7 @@ function mapListWithItemsDto(dtos: ListWithItemsDto[]): List[] {
         itemId: dto.itemId,
         itemName: dto.itemName,
         count: dto.liCount,
+        crossed: dto.liCrossed === 1 ? true : false,
         createdAt: parseISO(dto.liCreatedAt),
         updatedAt: parseISO(dto.liUpdatedAt),
       };
@@ -233,6 +276,7 @@ function mapDtoListItem(dto: ListItemDto): ListItem {
     createdAt: parseISO(dto.createdAt),
     updatedAt: parseISO(dto.updatedAt),
     itemName: dto.itemName,
+    crossed: dto.crossed === 1 ? true : false,
   };
 }
 
@@ -253,6 +297,7 @@ export interface ListWithItemsDto {
   itemId: string;
   itemName: string;
   liCount: number;
+  liCrossed: number;
   liCreatedAt: string;
   liUpdatedAt: string;
 }
@@ -262,6 +307,7 @@ export interface ListItemDto {
   itemId: string;
   itemName: string;
   count: number;
+  crossed: number;
   createdAt: string;
   updatedAt: string;
 }

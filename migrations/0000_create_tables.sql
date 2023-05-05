@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS list_items(
     count INT,
     createdAt DATETIME,
     updatedAt DATETIME,
+    crossed BOOLEAN DEFAULT FALSE,
     UNIQUE(listId, itemId),
     CONSTRAINT fk_lists FOREIGN KEY (listId) REFERENCES lists(id) ON DELETE CASCADE,
     CONSTRAINT fk_items FOREIGN KEY (itemId) REFERENCES items(id) ON DELETE CASCADE
