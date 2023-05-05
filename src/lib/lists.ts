@@ -2,11 +2,17 @@ import { formatISO, parseISO } from "date-fns";
 import { Env } from "../types";
 import { DbError } from "../util/db-error";
 import { nanoid } from "nanoid";
+import { getLogger } from "../util/logger";
 
 export class ListsRepository {
   constructor(private readonly db: D1Database) {}
   public static New(env: Env): ListsRepository {
     return new ListsRepository(env.DB);
+  }
+
+  private logSql(stmt: D1PreparedStatement, result: D1Result): void {
+    const logger = getLogger("ListsRepository");
+    logger.info("SQL INFO: ", stmt, result);
   }
 
   public async getLists(
@@ -27,6 +33,7 @@ export class ListsRepository {
         stmt = stmt.bind(userId, listId);
       }
       const result = await stmt.all<ListWithItemsDto>();
+      this.logSql(stmt, result);
       if (result.success && result.results) {
         return mapListWithItemsDto(result.results);
       } else {
@@ -51,12 +58,13 @@ export class ListsRepository {
       items: [],
     });
     try {
-      const result = await this.db
+      const stmt = this.db
         .prepare(
           "INSERT INTO lists (id, userId, name, createdAt) values (?1, ?2, ?3, ?4)"
         )
-        .bind(dto.id, dto.userId, dto.name, dto.createdAt)
-        .run();
+        .bind(dto.id, dto.userId, dto.name, dto.createdAt);
+      const result = await stmt.run();
+      this.logSql(stmt, result);
       if (result.error) {
         throw DbError.new(result);
       }
@@ -73,10 +81,11 @@ export class ListsRepository {
     name: string
   ): Promise<List> {
     try {
-      const result = await this.db
+      const stmt = this.db
         .prepare("UPDATE lists SET name = ?1 WHERE userId = ?2 AND id = ?3")
-        .bind(name, userId, listId)
-        .run();
+        .bind(name, userId, listId);
+      const result = await stmt.run();
+      this.logSql(stmt, result);
       if (result.error) {
         throw DbError.new(result);
       }
@@ -92,10 +101,11 @@ export class ListsRepository {
 
   public async deleteList(userId: string, listId: string): Promise<void> {
     try {
-      const result = await this.db
+      const stmt = this.db
         .prepare("DELETE FROM lists WHERE userId = ?1 AND id = ?2")
-        .bind(userId, listId)
-        .run();
+        .bind(userId, listId);
+      const result = await stmt.run();
+      this.logSql(stmt, result);
       if (result.error) {
         throw DbError.new(result);
       }
@@ -106,14 +116,15 @@ export class ListsRepository {
 
   public async getListItems(listId: string): Promise<ListItem[]> {
     try {
-      const result = await this.db
+      const stmt = this.db
         .prepare(
           `SELECT li.*, i.name as itemName FROM list_items li
            INNER JOIN items i ON i.id = li.itemId
            WHERE listId = ?`
         )
-        .bind(listId)
-        .all<ListItemDto>();
+        .bind(listId);
+      const result = await stmt.all<ListItemDto>();
+      this.logSql(stmt, result);
       if (result.success && result.results) {
         return result.results.map(mapDtoListItem);
       } else {
@@ -126,29 +137,31 @@ export class ListsRepository {
 
   public async addToList(listId: string, itemId: string): Promise<void> {
     try {
-      const existingListItem = await this.db
+      const existingListItemStmt = this.db
         .prepare("SELECT * FROM list_items WHERE listId = ?1 and itemId = ?2")
-        .bind(listId, itemId)
-        .all();
+        .bind(listId, itemId);
+      const existingListItem = await existingListItemStmt.all();
+      this.logSql(existingListItemStmt, existingListItem);
       if (existingListItem.error) {
         throw DbError.new(existingListItem);
       }
       const now = new Date();
       const nowStr = formatISO(now);
       let sql = "";
+      let stmt: D1PreparedStatement;
       let result: D1Result<unknown>;
       if (existingListItem.results && existingListItem.results?.length > 0) {
         sql =
           "UPDATE list_items SET count = count + 1, updatedAt = ?1 WHERE listId = ?2 AND itemId = ?3";
-        result = await this.db.prepare(sql).bind(nowStr, listId, itemId).run();
+        stmt = this.db.prepare(sql).bind(nowStr, listId, itemId);
+        result = await stmt.run();
       } else {
         sql =
           "INSERT INTO list_items (listId, itemId, count, createdAt, updatedAt) VALUES (?1, ?2, ?3, ?4, ?5)";
-        result = await this.db
-          .prepare(sql)
-          .bind(listId, itemId, 1, nowStr, nowStr)
-          .run();
+        stmt = this.db.prepare(sql).bind(listId, itemId, 1, nowStr, nowStr);
+        result = await stmt.run();
       }
+      this.logSql(stmt, result);
       if (result.error) {
         throw DbError.new(result);
       }
@@ -167,7 +180,9 @@ export class ListsRepository {
     try {
       const sql = "DELETE FROM list_items WHERE listId = ?1 and itemId in (?2)";
       const itemIdsStr = itemIds.join(",");
-      const result = await this.db.prepare(sql).bind(listId, itemIdsStr).run();
+      const stmt = this.db.prepare(sql).bind(listId, itemIdsStr);
+      const result = await stmt.run();
+      this.logSql(stmt, result);
       if (result.error) {
         throw DbError.new(result);
       }
@@ -185,10 +200,11 @@ export class ListsRepository {
       const sql =
         "UPDATE list_items SET crossed = ?1, updatedAt = ?2 WHERE listId = ?3 AND itemId = ?4";
       const crossedNumber = crossed ? 1 : 0;
-      const result = await this.db
+      const stmt = this.db
         .prepare(sql)
-        .bind(crossedNumber, formatISO(new Date()), listId, itemId)
-        .run();
+        .bind(crossedNumber, formatISO(new Date()), listId, itemId);
+      const result = await stmt.run();
+      this.logSql(stmt, result);
       if (result.error) {
         throw DbError.new(result);
       }
