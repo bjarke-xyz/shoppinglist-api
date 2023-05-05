@@ -24,18 +24,19 @@ export class Logger {
   private format(data: LogData): string {
     return `${data.level} | msg=${data.message} name=${
       this.context.name ?? ""
-    } user=${this.context.userId ?? ""} request-id=${
-      this.context.requestId ?? ""
     }`;
   }
 
   public log(level: LogLevel, message?: any, ...optionalParams: any[]) {
     const formattedMsg = this.format({ level, message });
-    if (optionalParams.length > 0) {
-      console.log(formattedMsg, optionalParams);
-    } else {
-      console.log(formattedMsg);
+    optionalParams.push({ name: this.context.name });
+    if (this.context.requestId) {
+      optionalParams.push({ requestId: this.context.requestId });
     }
+    if (this.context.userId) {
+      optionalParams.push({ userId: this.context.userId });
+    }
+    console.log(formattedMsg, optionalParams);
   }
 
   public info(message?: any, ...optionalParams: any[]) {
