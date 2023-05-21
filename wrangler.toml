@@ -7,5 +7,5 @@ kv_namespaces = [
 ]
 
 d1_databases = [
-    { binding = "DB", database_name = "shoppinglist_db", database_id = "f981eba6-bb61-4067-ac1e-af5014d4394c" },
+    { binding = "DB", database_name = "shoppinglist_db", database_id = "5a8f1785-e788-43ff-9f8c-4529cceee5b2" },
 ]
