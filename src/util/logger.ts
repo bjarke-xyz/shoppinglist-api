@@ -1,6 +1,5 @@
-import { Context } from "hono";
-import { getUserInfoOptional } from "../api/auth";
-import { getRequestId } from "../api/middleware";
+import { userInfoStore } from "../api/auth";
+import { requestIdStore } from "../api/middleware";
 
 export function getLogger(name: string): Logger {
   return new Logger({ name });
@@ -11,18 +10,18 @@ export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
 export class Logger {
   constructor(private readonly context: LogContext) {}
 
-  public withContext(context: Context): Logger {
-    const userInfo = getUserInfoOptional(context);
-    const requestId = getRequestId(context);
+  public withContext(): Logger {
+    const requestId = requestIdStore.getStore();
+    const userInfo = userInfoStore.getStore();
     return new Logger({
       ...this.context,
-      userId: userInfo?.sub,
       requestId: requestId,
+      userId: userInfo?.sub,
     });
   }
 
   private format(data: LogData): string {
-    return `${data.level} | msg=${data.message} name=${
+    return `${data.level} | msg=${data.message} | name=${
       this.context.name ?? ""
     }`;
   }
@@ -36,15 +35,15 @@ export class Logger {
     if (this.context.userId) {
       optionalParams.push({ userId: this.context.userId });
     }
-    console.log(formattedMsg, optionalParams);
+    console.log(formattedMsg, JSON.stringify(optionalParams));
   }
 
   public info(message?: any, ...optionalParams: any[]) {
-    return this.log("INFO", message, ...optionalParams);
+    return this.withContext().log("INFO", message, ...optionalParams);
   }
 
   public error(message?: any, ...optionalParams: any[]) {
-    return this.log("ERROR", message, ...optionalParams);
+    return this.withContext().log("ERROR", message, ...optionalParams);
   }
 }
 

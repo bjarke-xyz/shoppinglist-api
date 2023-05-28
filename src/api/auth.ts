@@ -1,49 +1,65 @@
 import { Context, Hono, Next } from "hono";
 import { Env } from "../types";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { DecodedJwt, FirebaseAuth } from "../lib/firebase";
 import { getLogger } from "../util/logger";
 
 export const authApi = new Hono<{ Bindings: Env }>();
 
+export const userInfoStore = new AsyncLocalStorage<DecodedJwt | null>();
+
 const logger = getLogger("api.auth");
 
-export function authMiddleware() {
-  return async (c: Context<{ Bindings: Env }>, next: Next) => {
-    const authorizationHeader = c.req.header("Authorization");
-    if (!authorizationHeader) {
-      return c.text("no token provided", 401);
+export const authProtectedRoutes = ["/api/items", "/api/lists"];
+
+export async function authMiddleware(
+  request: Request,
+  env: Env,
+  next: () => Promise<Response>
+): Promise<Response> {
+  let doAuthCheck = authProtectedRoutes.some((url) => {
+    const requestUrl = new URL(request.url);
+    return requestUrl.pathname.startsWith(url);
+  });
+  if (doAuthCheck && request.method === "OPTIONS") {
+    doAuthCheck = false;
+  }
+  if (!doAuthCheck) {
+    return userInfoStore.run(null, next);
+  } else {
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response("No token provided", {
+        status: 401,
+      });
     }
-    const idToken = authorizationHeader.split("Bearer ")[1];
+    const idToken = authHeader.split("Bearer ")[1];
     if (!idToken) {
-      return c.text("no token provided", 401);
+      return new Response("No id token found in Authorization header", {
+        status: 401,
+      });
     }
-    const firebaseAuth = FirebaseAuth.New(c.env);
+
+    const firebaseAuth = FirebaseAuth.New(env);
     try {
       await firebaseAuth.validateIdToken(idToken);
     } catch (error) {
       logger.error("failed to verify id token", error);
-      return c.text("error validating token", 401);
+      return new Response("error validating token", { status: 401 });
     }
 
     const decodedJwt = firebaseAuth.decodeIdToken(idToken);
-    setUserInfo(c, decodedJwt);
-
-    await next();
-  };
+    return userInfoStore.run(decodedJwt, next);
+  }
 }
 
-const idTokenContextKey = "auth-id-token-key";
-const setUserInfo = (c: Context, idToken: DecodedJwt) =>
-  c.set(idTokenContextKey, idToken);
 export const getUserInfo = (c: Context): DecodedJwt => {
-  const userInfo = getUserInfoOptional(c);
+  const userInfo = userInfoStore.getStore();
   if (!userInfo) {
     throw new Error("Failed to get user info");
   }
   return userInfo;
 };
-export const getUserInfoOptional = (c: Context): DecodedJwt | null =>
-  c.get(idTokenContextKey);
 
 authApi.post("/login", async (c) => {
   const firebaseAuth = FirebaseAuth.New(c.env);

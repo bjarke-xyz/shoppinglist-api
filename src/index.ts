@@ -1,14 +1,13 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { authApi } from "./api/auth";
+import { authApi, authMiddleware } from "./api/auth";
 import { itemsApi } from "./api/items";
-import { requestIdMiddleware, requestLogger } from "./api/middleware";
-import { getLogger } from "./util/logger";
 import { listsApi } from "./api/lists";
+import { requestIdMiddleware } from "./api/middleware";
+import { Env } from "./types";
+import { getLogger } from "./util/logger";
 
-const app = new Hono();
-app.use("/api/*", requestIdMiddleware());
-app.use("/api/*", requestLogger());
+const app = new Hono<{ Bindings: Env }>();
 app.use(
   "/api/*",
   cors({
@@ -21,8 +20,9 @@ app.route("/api/items", itemsApi);
 app.route("/api/lists", listsApi);
 
 app.onError((err, c) => {
-  const logger = getLogger("exception-handler").withContext(c);
+  const logger = getLogger("exception-handler");
   logger.error(`Error occured`, err);
+  console.error(err);
   if ((err as any).cause) {
     const cause = (err as any).cause?.toString() as string;
     if (cause?.includes("UNIQUE constraint failed")) {
@@ -42,4 +42,12 @@ app.onError((err, c) => {
   );
 });
 
-export default app;
+export default {
+  fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    return requestIdMiddleware(request, async () => {
+      return authMiddleware(request, env, async () => {
+        return await app.fetch(request, env, ctx);
+      });
+    });
+  },
+};

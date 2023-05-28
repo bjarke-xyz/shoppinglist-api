@@ -3,18 +3,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { ItemsRepository } from "../lib/items";
 import { Env } from "../types";
-import { getLogger } from "../util/logger";
-import { authMiddleware, getUserInfo } from "./auth";
-import { requestLogger } from "./middleware";
+import { getUserInfo } from "./auth";
 
 export const itemsApi = new Hono<{ Bindings: Env }>();
 
-const logger = getLogger("api.items");
-
-itemsApi.use("*", authMiddleware());
-
 itemsApi.get("/", async (c) => {
-  const l = logger.withContext(c);
   const user = getUserInfo(c);
   const itemsRepository = ItemsRepository.New(c.env);
   const items = await itemsRepository.getItems(user.sub);
@@ -30,7 +23,6 @@ itemsApi.post(
     })
   ),
   async (c) => {
-    const l = logger.withContext(c);
     const user = getUserInfo(c);
     const itemsRepository = ItemsRepository.New(c.env);
     const input = await c.req.json();
@@ -48,7 +40,6 @@ itemsApi.put(
     })
   ),
   async (c) => {
-    const l = logger.withContext(c);
     const user = getUserInfo(c);
     const itemsRepository = ItemsRepository.New(c.env);
     const input = await c.req.json();

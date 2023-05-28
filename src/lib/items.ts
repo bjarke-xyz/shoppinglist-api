@@ -1,25 +1,22 @@
 import { formatISO, parseISO } from "date-fns";
+import { nanoid } from "nanoid";
 import { Env } from "../types";
 import { DbError } from "../util/db-error";
-import { nanoid } from "nanoid";
+import { BaseRepository } from "./db/base-repository";
 
-export class ItemsRepository {
-  constructor(private readonly db: D1Database) {}
+export class ItemsRepository extends BaseRepository {
   public static New(env: Env): ItemsRepository {
     return new ItemsRepository(env.DB);
   }
 
   public async getItems(userId: string): Promise<Item[]> {
     try {
-      const result = await this.db
-        .prepare("SELECT * FROM items WHERE userId = ?")
-        .bind(userId)
-        .all<ItemDto>();
-      if (result.success && result.results) {
-        return result.results.map(mapDto);
-      } else {
-        throw DbError.new(result);
-      }
+      const items = await this.db
+        .selectFrom("items")
+        .selectAll()
+        .where("userId", "=", userId)
+        .execute();
+      return items;
     } catch (error: any) {
       throw DbError.new(null, error);
     }
@@ -27,15 +24,13 @@ export class ItemsRepository {
 
   public async getItem(userId: string, itemId: string): Promise<Item | null> {
     try {
-      const result = await this.db
-        .prepare("SELECT * FROM items WHERE userId = ?1 and id = ?2")
-        .bind(userId, itemId)
-        .all<ItemDto>();
-      if (result.success && result.results) {
-        return result.results.map(mapDto)[0] ?? null;
-      } else {
-        throw DbError.new(result);
-      }
+      const item = await this.db
+        .selectFrom("items")
+        .selectAll()
+        .where("userId", "=", userId)
+        .where("id", "=", itemId)
+        .executeTakeFirst();
+      return item ?? null;
     } catch (error: any) {
       throw DbError.new(null, error);
     }
@@ -46,15 +41,13 @@ export class ItemsRepository {
     itemName: string
   ): Promise<Item | null> {
     try {
-      const result = await this.db
-        .prepare("SELECT * FROM items WHERE userId = ?1 and name = ?2")
-        .bind(userId, itemName)
-        .all<ItemDto>();
-      if (result.success && result.results) {
-        return result.results.map(mapDto)[0] ?? null;
-      } else {
-        throw DbError.new(result);
-      }
+      const item = await this.db
+        .selectFrom("items")
+        .selectAll()
+        .where("userId", "=", userId)
+        .where("name", "=", itemName)
+        .executeTakeFirst();
+      return item ?? null;
     } catch (error: any) {
       throw DbError.new(null, error);
     }
@@ -68,15 +61,15 @@ export class ItemsRepository {
       createdAt: new Date(),
     });
     try {
-      const result = await this.db
-        .prepare(
-          "INSERT INTO items (id, userId, name, createdAt) values (?1, ?2, ?3, ?4)"
-        )
-        .bind(dto.id, dto.userId, dto.name, dto.createdAt)
-        .run();
-      if (result.error) {
-        throw DbError.new(result);
-      }
+      this.db
+        .insertInto("items")
+        .values({
+          id: dto.id,
+          userId: dto.userId,
+          name: dto.name,
+          createdAt: dto.createdAt,
+        })
+        .execute();
       const entity = mapDto(dto);
       return entity;
     } catch (error: any) {
@@ -90,13 +83,14 @@ export class ItemsRepository {
     name: string
   ): Promise<Item> {
     try {
-      const result = await this.db
-        .prepare("UPDATE items SET name = ?1 WHERE userId = ?2 AND id = ?3")
-        .bind(name, userId, itemId)
-        .run();
-      if (result.error) {
-        throw DbError.new(result);
-      }
+      await this.db
+        .updateTable("items")
+        .set({
+          name: name,
+        })
+        .where("userId", "=", userId)
+        .where("id", "=", itemId)
+        .execute();
       const updatedItem = await this.getItem(userId, itemId);
       if (updatedItem == null) {
         throw new Error("Updated item was null");
@@ -109,13 +103,11 @@ export class ItemsRepository {
 
   public async deleteItem(userId: string, itemId: string): Promise<void> {
     try {
-      const result = await this.db
-        .prepare("DELETE FROM items WHERE userId = ?1 AND id = ?2")
-        .bind(userId, itemId)
-        .run();
-      if (result.error) {
-        throw DbError.new(result);
-      }
+      await this.db
+        .deleteFrom("items")
+        .where("userId", "=", userId)
+        .where("id", "=", itemId)
+        .execute();
     } catch (error: any) {
       throw DbError.new(null, error);
     }

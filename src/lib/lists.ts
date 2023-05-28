@@ -1,24 +1,17 @@
 import { formatISO, parseISO } from "date-fns";
+import { Insertable, Kysely, sql } from "kysely";
+import { D1Dialect } from "kysely-d1";
+import { nanoid } from "nanoid";
 import { Env } from "../types";
 import { DbError } from "../util/db-error";
-import { nanoid } from "nanoid";
-import { getLogger } from "../util/logger";
+import { Database, ListItemsTable } from "./db/database";
+import { JsonParsePlugin } from "./db/helpers/plugin";
+import { jsonArrayFrom } from "./db/helpers/sqlite";
+import { BaseRepository } from "./db/base-repository";
 
-export class ListsRepository {
-  constructor(private readonly db: D1Database) {}
+export class ListsRepository extends BaseRepository {
   public static New(env: Env): ListsRepository {
     return new ListsRepository(env.DB);
-  }
-
-  private logSql(
-    start: Date,
-    stmt: D1PreparedStatement,
-    result: D1Result
-  ): void {
-    const logger = getLogger("ListsRepository");
-    const end = new Date();
-    const duration = end.getTime() - start.getTime();
-    logger.info("SQL INFO: ", stmt, result, { duration });
   }
 
   public async getLists(
@@ -26,26 +19,34 @@ export class ListsRepository {
     listId: string | null = null
   ): Promise<List[]> {
     try {
-      const start = new Date();
-      const listIdWhere = listId ? " AND l.id = ?2" : "";
-      let stmt = this.db
-        .prepare(
-          `SELECT l.*, li.itemId, i.name as itemName, li.count as liCount, li.crossed as liCrossed, li.createdAt as liCreatedAt, li.updatedAt as liUpdatedAt FROM lists l
-           LEFT JOIN list_items li ON li.listId = l.id
-           LEFT JOIN items i on i.id = li.itemId
-           WHERE l.userId = ?1 ${listIdWhere}`
-        )
-        .bind(userId);
-      if (listId) {
-        stmt = stmt.bind(userId, listId);
-      }
-      const result = await stmt.all<ListWithItemsDto>();
-      this.logSql(start, stmt, result);
-      if (result.success && result.results) {
-        return mapListWithItemsDto(result.results);
-      } else {
-        throw DbError.new(result);
-      }
+      const res = await this.db
+        .selectFrom("lists")
+        .selectAll("lists")
+        .select((listEb) => [
+          jsonArrayFrom(
+            listEb
+              .selectFrom("list_items")
+              .select((listItemEb) => [
+                "listId",
+                "itemId",
+                "count",
+                "crossed",
+                "createdAt",
+                "updatedAt",
+                listItemEb
+                  .selectFrom("items")
+                  .select("name")
+                  .whereRef("items.id", "=", "list_items.itemId")
+                  .as("itemName"),
+              ])
+              .whereRef("list_items.listId", "=", "lists.id")
+          ).as("items"),
+        ])
+        .where("userId", "=", userId)
+        .$if(!!listId, (qb) => qb.where("id", "=", listId))
+        .withPlugin(new JsonParsePlugin(["items"]))
+        .execute();
+      return res;
     } catch (error: any) {
       throw DbError.new(null, error);
     }
@@ -65,17 +66,15 @@ export class ListsRepository {
       items: [],
     });
     try {
-      const start = new Date();
-      const stmt = this.db
-        .prepare(
-          "INSERT INTO lists (id, userId, name, createdAt) values (?1, ?2, ?3, ?4)"
-        )
-        .bind(dto.id, dto.userId, dto.name, dto.createdAt);
-      const result = await stmt.run();
-      this.logSql(start, stmt, result);
-      if (result.error) {
-        throw DbError.new(result);
-      }
+      await this.db
+        .insertInto("lists")
+        .values({
+          id: dto.id,
+          userId: dto.userId,
+          name: dto.name,
+          createdAt: dto.createdAt,
+        })
+        .execute();
       const entity = mapDto(dto);
       return entity;
     } catch (error: any) {
@@ -89,15 +88,14 @@ export class ListsRepository {
     name: string
   ): Promise<List> {
     try {
-      const start = new Date();
-      const stmt = this.db
-        .prepare("UPDATE lists SET name = ?1 WHERE userId = ?2 AND id = ?3")
-        .bind(name, userId, listId);
-      const result = await stmt.run();
-      this.logSql(start, stmt, result);
-      if (result.error) {
-        throw DbError.new(result);
-      }
+      await this.db
+        .updateTable("lists")
+        .set({
+          name: name,
+        })
+        .where("userId", "=", userId)
+        .where("id", "=", listId)
+        .execute();
       const updatedList = await this.getList(userId, listId);
       if (updatedList == null) {
         throw new Error("Updated list was null");
@@ -110,15 +108,11 @@ export class ListsRepository {
 
   public async deleteList(userId: string, listId: string): Promise<void> {
     try {
-      const start = new Date();
-      const stmt = this.db
-        .prepare("DELETE FROM lists WHERE userId = ?1 AND id = ?2")
-        .bind(userId, listId);
-      const result = await stmt.run();
-      this.logSql(start, stmt, result);
-      if (result.error) {
-        throw DbError.new(result);
-      }
+      await this.db
+        .deleteFrom("lists")
+        .where("userId", "=", userId)
+        .where("id", "=", listId)
+        .execute();
     } catch (error: any) {
       throw DbError.new(null, error);
     }
@@ -126,21 +120,14 @@ export class ListsRepository {
 
   public async getListItems(listId: string): Promise<ListItem[]> {
     try {
-      const start = new Date();
-      const stmt = this.db
-        .prepare(
-          `SELECT li.*, i.name as itemName FROM list_items li
-           INNER JOIN items i ON i.id = li.itemId
-           WHERE listId = ?`
-        )
-        .bind(listId);
-      const result = await stmt.all<ListItemDto>();
-      this.logSql(start, stmt, result);
-      if (result.success && result.results) {
-        return result.results.map(mapDtoListItem);
-      } else {
-        throw DbError.new(result);
-      }
+      const res = await this.db
+        .selectFrom("list_items")
+        .innerJoin("items", "list_items.itemId", "items.id")
+        .selectAll("list_items")
+        .select("items.name as itemName")
+        .where("listId", "=", listId)
+        .execute();
+      return res;
     } catch (error: any) {
       throw DbError.new(null, error);
     }
@@ -148,36 +135,27 @@ export class ListsRepository {
 
   public async addToList(listId: string, itemId: string): Promise<void> {
     try {
-      let start = new Date();
-      const existingListItemStmt = this.db
-        .prepare("SELECT * FROM list_items WHERE listId = ?1 and itemId = ?2")
-        .bind(listId, itemId);
-      const existingListItem = await existingListItemStmt.all();
-      this.logSql(start, existingListItemStmt, existingListItem);
-      if (existingListItem.error) {
-        throw DbError.new(existingListItem);
-      }
       const now = new Date();
       const nowStr = formatISO(now);
-      let sql = "";
-      let stmt: D1PreparedStatement;
-      let result: D1Result<unknown>;
-      start = new Date();
-      if (existingListItem.results && existingListItem.results?.length > 0) {
-        sql =
-          "UPDATE list_items SET count = count + 1, updatedAt = ?1 WHERE listId = ?2 AND itemId = ?3";
-        stmt = this.db.prepare(sql).bind(nowStr, listId, itemId);
-        result = await stmt.run();
-      } else {
-        sql =
-          "INSERT INTO list_items (listId, itemId, count, createdAt, updatedAt) VALUES (?1, ?2, ?3, ?4, ?5)";
-        stmt = this.db.prepare(sql).bind(listId, itemId, 1, nowStr, nowStr);
-        result = await stmt.run();
-      }
-      this.logSql(start, stmt, result);
-      if (result.error) {
-        throw DbError.new(result);
-      }
+      const input: Insertable<ListItemsTable> = {
+        listId: listId,
+        itemId: itemId,
+        count: 1,
+        crossed: 0,
+        createdAt: nowStr,
+        updatedAt: nowStr,
+      };
+      await this.db
+        .insertInto("list_items")
+        .values(input)
+        .onConflict((oc) =>
+          oc.columns(["listId", "itemId"]).doUpdateSet({
+            count: (eb) =>
+              sql`${eb.ref("count")} + ${eb.ref("excluded.count")}`,
+            updatedAt: nowStr,
+          })
+        )
+        .execute();
     } catch (error: any) {
       throw DbError.new(null, error);
     }
@@ -191,16 +169,11 @@ export class ListsRepository {
       return;
     }
     try {
-      const start = new Date();
-      // +2 to start at 1, and listId uses ?1
-      const itemIdQuestionMarks = itemIds.map((_, i) => `?${i + 2}`).join(",");
-      const sql = `DELETE FROM list_items WHERE listId = ?1 and itemId IN (${itemIdQuestionMarks})`;
-      const stmt = this.db.prepare(sql).bind(listId, ...itemIds);
-      const result = await stmt.run();
-      this.logSql(start, stmt, result);
-      if (result.error) {
-        throw DbError.new(result);
-      }
+      await this.db
+        .deleteFrom("list_items")
+        .where("listId", "=", listId)
+        .where("itemId", "in", itemIds)
+        .execute();
     } catch (error: any) {
       throw DbError.new(null, error);
     }
@@ -212,18 +185,15 @@ export class ListsRepository {
     crossed: boolean
   ): Promise<void> {
     try {
-      const start = new Date();
-      const sql =
-        "UPDATE list_items SET crossed = ?1, updatedAt = ?2 WHERE listId = ?3 AND itemId = ?4";
-      const crossedNumber = crossed ? 1 : 0;
-      const stmt = this.db
-        .prepare(sql)
-        .bind(crossedNumber, formatISO(new Date()), listId, itemId);
-      const result = await stmt.run();
-      this.logSql(start, stmt, result);
-      if (result.error) {
-        throw DbError.new(result);
-      }
+      await this.db
+        .updateTable("list_items")
+        .where("listId", "=", listId)
+        .where("itemId", "=", itemId)
+        .set({
+          crossed: crossed ? 1 : 0,
+          updatedAt: formatISO(new Date()),
+        })
+        .execute();
     } catch (error: any) {
       throw DbError.new(null, error);
     }

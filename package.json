@@ -3,18 +3,17 @@
   "version": "0.0.0",
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20230307.0",
+    "@miniflare/tre": "^3.0.0-next.13",
     "typescript": "^5.0.2",
     "vitest": "^0.29.7",
-    "wrangler": "^2.17.0"
+    "wrangler": "^3.0.1"
   },
   "private": true,
   "scripts": {
-    "dev": "export NO_D1_WARNING=true && wrangler dev --local --persist",
-    "dev-not-local": "export NO_D1_WARNING=true && wrangler dev",
+    "dev": "export NO_D1_WARNING=true && wrangler dev",
+    "dev-not-local": "export NO_D1_WARNING=true && wrangler dev --remote",
     "deploy": "wrangler publish",
     "test": "vitest",
-    "migrate": "export NO_D1_WARNING=true && wrangler d1 migrations apply DB",
-    "migrate-local": "export NO_D1_WARNING=true && wrangler d1 migrations apply DB --local",
     "sql-command": "export NO_D1_WARNING=true && wrangler d1 execute DB --command",
     "sql-command-local": "export NO_D1_WARNING=true && wrangler d1 execute DB --local --command"
   },
@@ -25,6 +24,8 @@
     "hono": "^3.1.5",
     "jose": "^4.14.0",
     "jwt-decode": "^3.1.2",
+    "kysely": "^0.24.2",
+    "kysely-d1": "^0.3.0",
     "nanoid": "^4.0.2",
     "zod": "^3.21.4"
   }

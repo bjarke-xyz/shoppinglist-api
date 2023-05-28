@@ -1,7 +1,7 @@
 name = "shoppinglist-api"
 main = "src/index.ts"
 compatibility_date = "2023-03-21"
-
+compatibility_flags = ["nodejs_compat"]
 kv_namespaces = [
     { binding = "SHOPPINGLIST", id = "ec5f4345586346af8f1f5fd77d865e6d", preview_id = "b3f819d0400b485fb2eb68059cf9668e" },
 ]
