@@ -9,7 +9,7 @@ import { getLogger } from "./util/logger";
 
 const app = new Hono<{ Bindings: Env }>();
 app.use(
-  "/api/*",
+  "*",
   cors({
     origin: "*",
     maxAge: 86400,
@@ -18,6 +18,10 @@ app.use(
 app.route("/api/auth", authApi);
 app.route("/api/items", itemsApi);
 app.route("/api/lists", listsApi);
+
+app.get("/docs/routes", (c) => {
+  return c.json(app.routes);
+});
 
 app.onError((err, c) => {
   const logger = getLogger("exception-handler");
