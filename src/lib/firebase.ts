@@ -42,6 +42,18 @@ export class FirebaseAuth {
     });
   }
 
+  public async signUpsEnabled(): Promise<boolean> {
+    const value = await this.SHOPPINGLIST.get("SIGNUPSENABLED");
+    if (!value) {
+      return false;
+    }
+    return JSON.parse(value);
+  }
+
+  public async toggleSignUps(enabled: boolean): Promise<void> {
+    await this.SHOPPINGLIST.put("SIGNUPSENABLED", JSON.stringify(enabled));
+  }
+
   public async sendConfirmEmail(idToken: string): Promise<EmailResponse> {
     return this.sendAction<EmailResponse>("sendOobCode", {
       requestType: "VERIFY_EMAIL",

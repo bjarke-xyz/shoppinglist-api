@@ -6,6 +6,7 @@ import { listsApi } from "./api/lists";
 import { requestIdMiddleware } from "./api/middleware";
 import { Env } from "./types";
 import { getLogger } from "./util/logger";
+import { adminApi } from "./api/admin";
 
 const app = new Hono<{ Bindings: Env }>();
 app.use(
@@ -15,6 +16,7 @@ app.use(
     maxAge: 86400,
   })
 );
+app.route("/api/admin", adminApi);
 app.route("/api/auth", authApi);
 app.route("/api/items", itemsApi);
 app.route("/api/lists", listsApi);

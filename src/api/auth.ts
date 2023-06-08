@@ -10,7 +10,7 @@ export const userInfoStore = new AsyncLocalStorage<DecodedJwt | null>();
 
 const logger = getLogger("api.auth");
 
-export const authProtectedRoutes = ["/api/items", "/api/lists"];
+export const authProtectedRoutes = ["/api/admin", "/api/items", "/api/lists"];
 
 export async function authMiddleware(
   request: Request,
@@ -113,6 +113,11 @@ authApi.post("/resend-email-verification", async (c) => {
 
 authApi.post("/register", async (c) => {
   const firebaseAuth = FirebaseAuth.New(c.env);
+  const signupsEnabled = await firebaseAuth.signUpsEnabled();
+  if (!signupsEnabled) {
+    c.status(418);
+    return c.text("Registration is temporarily disabled");
+  }
   const loginInfo = await c.req.json<{ email: string; password: string }>();
   const signUpResponse = await firebaseAuth.signUp(
     loginInfo.email,
