@@ -15,6 +15,7 @@ jobs:
           node-version: lts/*
           cache: npm
       - run: npm ci
+      - run: ./bin/migrate.sh prod
       - name: Publish
         id: publish
         uses: cloudflare/wrangler-action@2.0.0
@@ -27,22 +28,3 @@ jobs:
         env:
           FIREBASE_WEB_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-
-      - name: Notify on error
-        uses: fjogeleit/http-request-action@v1
-        if: failure() && steps.publish.outcome == 'failure'
-        with:
-          url: "${{ secrets.NOTIFICATIONS_URL }}"
-          method: "POST"
-          username: "${{ secrets.NOTIFICATIONS_USERNAME }}"
-          password: "${{ secrets.NOTIFICATIONS_PASSWORD }}"
-          data: '{ "channels": ["discord", "email"], "message": { "message": "⚠️ ${{ github.repository }} failed to release. <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}>" } }'
-      - name: Notify on success
-        uses: fjogeleit/http-request-action@v1
-        if: success() && steps.publish.outcome == 'success'
-        with:
-          url: "${{ secrets.NOTIFICATIONS_URL }}"
-          method: "POST"
-          username: "${{ secrets.NOTIFICATIONS_USERNAME }}"
-          password: "${{ secrets.NOTIFICATIONS_PASSWORD }}"
-          data: '{ "channels": ["discord", "email"], "message": { "message": "🚀 ${{ github.repository }} has been released. <https://github.com/${{ github.repository }}/>" } }'
