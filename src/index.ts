@@ -7,6 +7,7 @@ import { requestIdMiddleware } from "./api/middleware";
 import { Env } from "./types";
 import { getLogger } from "./util/logger";
 import { adminApi } from "./api/admin";
+import { StatusCode } from "hono/utils/http-status";
 
 const app = new Hono<{ Bindings: Env }>();
 app.use(
@@ -27,25 +28,18 @@ app.get("/docs/routes", (c) => {
 
 app.onError((err, c) => {
   const logger = getLogger("exception-handler");
-  logger.error(`Error occured`, err);
-  console.error(err);
+  let causeStr = "";
+  let status: StatusCode = 500;
+  let errorMsg = "An error occured";
   if ((err as any).cause) {
-    const cause = (err as any).cause?.toString() as string;
-    if (cause?.includes("UNIQUE constraint failed")) {
-      return c.json(
-        {
-          error: "An error occured",
-        },
-        409
-      );
+    causeStr = (err as any).cause?.toString() as string;
+    if (causeStr?.includes("UNIQUE constraint failed")) {
+      status = 409;
     }
   }
-  return c.json(
-    {
-      error: "An error occured",
-    },
-    500
-  );
+  logger.error(`Error occured`, err, causeStr);
+  console.log(err);
+  return c.json({ error: errorMsg }, status);
 });
 
 export default {
