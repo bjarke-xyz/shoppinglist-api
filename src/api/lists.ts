@@ -96,7 +96,11 @@ listsApi.post(
     }
     await listsRepository.addToList(list.id, item.id);
     const listItems = await listsRepository.getListItems(list.id);
-    return c.json(listItems);
+    const response = {
+      listItems,
+      addedItem: item,
+    };
+    return c.json(response);
   }
 );
 
