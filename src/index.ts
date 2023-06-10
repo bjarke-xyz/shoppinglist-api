@@ -8,6 +8,7 @@ import { Env } from "./types";
 import { getLogger } from "./util/logger";
 import { adminApi } from "./api/admin";
 import { StatusCode } from "hono/utils/http-status";
+import { eventsApi } from "./api/events";
 
 const app = new Hono<{ Bindings: Env }>();
 app.use(
@@ -21,6 +22,7 @@ app.route("/api/admin", adminApi);
 app.route("/api/auth", authApi);
 app.route("/api/items", itemsApi);
 app.route("/api/lists", listsApi);
+app.route("/api/events", eventsApi);
 
 app.get("/docs/routes", (c) => {
   return c.json(app.routes);
