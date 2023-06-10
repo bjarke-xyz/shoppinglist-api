@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { Env } from "../types";
 
-export const eventsApi = new Hono<{ Bindings: Env }>();
+export const sseApi = new Hono<{ Bindings: Env }>();
 
-eventsApi.get("/sse", async (c) => {
+sseApi.get("/sse", async (c) => {
   const { readable, writable } = new TransformStream();
   const encoder = new TextEncoder();
   const writer = writable.getWriter();
