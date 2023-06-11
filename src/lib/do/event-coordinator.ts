@@ -133,6 +133,17 @@ export class EventCoordinatorClient {
     });
   }
 
+  async itemDeleted(
+    initiator: string | undefined,
+    data: ItemDeletedEvent
+  ): Promise<void> {
+    return await this.broadcast({
+      type: "ItemDeleted",
+      data,
+      initiator,
+    });
+  }
+
   private async broadcast(payload: BroadcastPayload): Promise<void> {
     await this.do.fetch(`${this.baseUrl}/broadcast`, {
       method: "POST",
@@ -146,8 +157,16 @@ interface SessionInfo {
   userId: string;
 }
 
-type EventType = "ListItemAdded" | "ListItemsRemoved" | "ListItemCrossed";
-type EventData = ListItemAddEvent | ListItemsRemoved | ListItemCrossed;
+type EventType =
+  | "ListItemAdded"
+  | "ListItemsRemoved"
+  | "ListItemCrossed"
+  | "ItemDeleted";
+type EventData =
+  | ListItemAddEvent
+  | ListItemsRemoved
+  | ListItemCrossed
+  | ItemDeletedEvent;
 interface BroadcastPayload {
   type: EventType;
   data: EventData;
@@ -163,4 +182,7 @@ interface ListItemsRemoved {
 interface ListItemCrossed {
   itemId: string;
   crossed: boolean;
+}
+interface ItemDeletedEvent {
+  itemId: string;
 }

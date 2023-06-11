@@ -4,6 +4,8 @@ import { z } from "zod";
 import { ItemsRepository } from "../lib/items";
 import { Env } from "../types";
 import { getUserInfo } from "./auth";
+import { ListsRepository } from "../lib/lists";
+import { EventCoordinatorClient } from "../lib/do/event-coordinator";
 
 export const itemsApi = new Hono<{ Bindings: Env }>();
 
@@ -55,6 +57,18 @@ itemsApi.put(
 itemsApi.delete("/:id", async (c) => {
   const user = getUserInfo(c);
   const itemsRepository = ItemsRepository.New(c.env);
-  await itemsRepository.deleteItem(user.sub, c.req.param("id"));
+  const itemId = c.req.param("id");
+  await itemsRepository.deleteItem(user.sub, itemId);
+  const notifyFunc = async () => {
+    const listsRepository = ListsRepository.New(c.env);
+    const lists = await listsRepository.getLists(user.sub);
+    for (const list of lists) {
+      const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+      await eventCoordinatorClient.itemDeleted(c.req.header("Client-ID"), {
+        itemId,
+      });
+    }
+  };
+  c.executionCtx.waitUntil(notifyFunc());
   return c.json(null);
 });
