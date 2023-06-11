@@ -100,24 +100,36 @@ export class EventCoordinatorClient {
     return number;
   }
 
-  async listItemAdded(data: ListItemAddEvent): Promise<void> {
+  async listItemAdded(
+    initiator: string | undefined,
+    data: ListItemAddEvent
+  ): Promise<void> {
     return await this.broadcast({
       type: "ListItemAdded",
       data,
+      initiator,
     });
   }
 
-  async listItemsRemoved(data: ListItemsRemoved): Promise<void> {
+  async listItemsRemoved(
+    initiator: string | undefined,
+    data: ListItemsRemoved
+  ): Promise<void> {
     return await this.broadcast({
       type: "ListItemsRemoved",
       data,
+      initiator,
     });
   }
 
-  async listItemCrossed(data: ListItemCrossed): Promise<void> {
+  async listItemCrossed(
+    initiator: string | undefined,
+    data: ListItemCrossed
+  ): Promise<void> {
     return await this.broadcast({
       type: "ListItemCrossed",
       data,
+      initiator,
     });
   }
 
@@ -139,6 +151,7 @@ type EventData = ListItemAddEvent | ListItemsRemoved | ListItemCrossed;
 interface BroadcastPayload {
   type: EventType;
   data: EventData;
+  initiator?: string;
 }
 interface ListItemAddEvent {
   listItems: ListItem[];
