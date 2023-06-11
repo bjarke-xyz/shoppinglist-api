@@ -10,6 +10,8 @@ import { adminApi } from "./api/admin";
 import { StatusCode } from "hono/utils/http-status";
 import { sseApi } from "./api/sse";
 
+export { EventCoordinator } from "./lib/do/event-coordinator";
+
 const app = new Hono<{ Bindings: Env }>();
 app.use(
   "*",

@@ -75,7 +75,8 @@ export class FirebaseAuth {
     });
   }
 
-  public decodeIdToken(idToken: string): DecodedJwt {
+  public decodeIdToken(idToken: string | undefined): DecodedJwt {
+    if (!idToken) throw new Error("No token provided");
     return decodeJwt(idToken) as DecodedJwt;
   }
 
@@ -83,12 +84,13 @@ export class FirebaseAuth {
     return decodeJwt(idToken, { header: true }) as JwtHeader;
   }
 
-  public async validateIdToken(idToken: string): Promise<void> {
+  public async validateIdToken(idToken: string | undefined): Promise<void> {
+    if (!idToken) throw new Error("No token provided");
     // https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
     const issuer = `https://securetoken.google.com/${this.firebaseProjectId}`;
     const header = this.decodeIdTokenHeader(idToken);
     const decoded = this.decodeIdToken(idToken);
-    if (!header || !decoded) throw new Error("Unable to decode id token ");
+    if (!header || !decoded) throw new Error("Unable to decode id token");
     if (header.alg !== "RS256") {
       throw new Error(`Incorrect alg, got ${header.alg}, expected RS256`);
     }

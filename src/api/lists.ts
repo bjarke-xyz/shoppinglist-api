@@ -5,6 +5,7 @@ import { ItemsRepository } from "../lib/items";
 import { ListsRepository } from "../lib/lists";
 import { Env } from "../types";
 import { getUserInfo } from "./auth";
+import { EventCoordinatorClient } from "../lib/do/event-coordinator";
 
 export const listsApi = new Hono<{ Bindings: Env }>();
 
@@ -96,6 +97,11 @@ listsApi.post(
     }
     await listsRepository.addToList(list.id, item.id);
     const listItems = await listsRepository.getListItems(list.id);
+    const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+    await eventCoordinatorClient.listItemAdded({
+      listItems: listItems,
+      addedItem: item,
+    });
     const response = {
       listItems,
       addedItem: item,
@@ -117,6 +123,8 @@ listsApi.patch(
     }
     const input: { itemIds: string[] } = await c.req.json();
     await listsRepository.removeFromList(list.id, input.itemIds);
+    const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+    eventCoordinatorClient.listItemsRemoved({ itemIds: input.itemIds });
     // TODO: return 204 empty
     return c.json(null);
   }
@@ -134,11 +142,13 @@ listsApi.patch(
       return c.json({ error: "List not found" }, 404);
     }
     const input: { crossed: boolean } = await c.req.json();
-    await listsRepository.crossListItem(
-      list.id,
-      c.req.param("itemId"),
-      input.crossed
-    );
+    const itemId = c.req.param("itemId");
+    await listsRepository.crossListItem(list.id, itemId, input.crossed);
+    const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+    await eventCoordinatorClient.listItemCrossed({
+      itemId: itemId,
+      crossed: input.crossed,
+    });
     // TODO: return 204 empty
     return c.json(null);
   }
