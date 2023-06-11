@@ -10,8 +10,8 @@
   },
   "private": true,
   "scripts": {
-    "dev": "export NO_D1_WARNING=true && wrangler dev",
-    "dev-not-local": "export NO_D1_WARNING=true && wrangler dev --remote",
+    "dev": "export NO_D1_WARNING=true && wrangler dev --test-scheduled",
+    "dev-not-local": "export NO_D1_WARNING=true && wrangler dev --remote --test-scheduled ",
     "deploy": "wrangler publish",
     "test": "vitest",
     "sql-command": "export NO_D1_WARNING=true && wrangler d1 execute DB --command",

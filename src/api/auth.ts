@@ -3,6 +3,7 @@ import { Env } from "../types";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { DecodedJwt, FirebaseAuth } from "../lib/firebase";
 import { getLogger } from "../util/logger";
+import { demoUserIds } from "../util/demo-users";
 
 export const authApi = new Hono<{ Bindings: Env }>();
 
@@ -74,13 +75,15 @@ authApi.post("/login", async (c) => {
   }
 
   const decodedToken = firebaseAuth.decodeIdToken(signInResponse.idToken);
-  if (!decodedToken.email_verified) {
-    c.status(400);
-    return c.json({
-      error: {
-        message: "Email not yet verified",
+  if (!decodedToken.email_verified && !demoUserIds.includes(decodedToken.sub)) {
+    return c.json(
+      {
+        error: {
+          message: "Email not yet verified",
+        },
       },
-    });
+      400
+    );
   }
   return c.json(signInResponse);
 });

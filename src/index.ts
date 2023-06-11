@@ -9,6 +9,9 @@ import { getLogger } from "./util/logger";
 import { adminApi } from "./api/admin";
 import { StatusCode } from "hono/utils/http-status";
 import { sseApi } from "./api/sse";
+import { ListsRepository } from "./lib/lists";
+import { ItemsRepository } from "./lib/items";
+import { demoUserIds } from "./util/demo-users";
 
 export { EventCoordinator } from "./lib/do/event-coordinator";
 
@@ -53,5 +56,17 @@ export default {
         return await app.fetch(request, env, ctx);
       });
     });
+  },
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    if (event.cron === "0 3 * * *") {
+      const listsRepository = ListsRepository.New(env);
+      const itemsRepository = ItemsRepository.New(env);
+      const promises: Promise<void>[] = [];
+      for (const user of demoUserIds) {
+        promises.push(listsRepository.deleteForUser(user));
+        promises.push(itemsRepository.deleteForUser(user));
+      }
+      ctx.waitUntil(Promise.all(promises));
+    }
   },
 };

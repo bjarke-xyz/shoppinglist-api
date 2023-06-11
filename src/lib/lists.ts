@@ -198,6 +198,13 @@ export class ListsRepository extends BaseRepository {
       throw DbError.new(null, error);
     }
   }
+  public async deleteForUser(userId: string): Promise<void> {
+    try {
+      await this.db.deleteFrom("lists").where("userId", "=", userId).execute();
+    } catch (error: any) {
+      throw DbError.new(null, error);
+    }
+  }
 }
 
 function mapEntity(entity: List): ListDto {

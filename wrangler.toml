@@ -16,3 +16,6 @@ bindings = [{ name = "EVENTCOORDINATOR", class_name = "EventCoordinator" }]
 [[migrations]]
 tag = "v1"                         # Should be unique for each entry
 new_classes = ["EventCoordinator"]
+
+[triggers]
+crons = ["0 3 * * *"]
