@@ -28,6 +28,10 @@ jobs:
           secrets: |
             FIREBASE_WEB_API_KEY
             FIREBASE_PROJECT_ID
+            WS_GATEWAY_APIKEY
+            WS_GATEWAY_APPID
         env:
           FIREBASE_WEB_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          WS_GATEWAY_APIKEY: ${{ secrets.WS_GATEWAY_APIKEY }}
+          WS_GATEWAY_APPID: ${{ secrets.WS_GATEWAY_APPID }}

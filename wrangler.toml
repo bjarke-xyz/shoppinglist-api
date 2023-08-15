@@ -10,6 +10,9 @@ d1_databases = [
     { binding = "DB", database_name = "shoppinglist_db", database_id = "5a8f1785-e788-43ff-9f8c-4529cceee5b2" },
 ]
 
+[[migrations]]
+tag = "v1"                             # Should be unique for each entry
+deleted_classes = ["EventCoordinator"]
 
 [triggers]
 crons = ["0 3 * * *"]

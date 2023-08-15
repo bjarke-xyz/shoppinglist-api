@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "export NO_D1_WARNING=true && wrangler dev --test-scheduled",
     "dev-not-local": "export NO_D1_WARNING=true && wrangler dev --remote --test-scheduled ",
-    "deploy": "wrangler publish",
+    "deploy": "wrangler deploy",
     "test": "vitest",
     "sql-command": "export NO_D1_WARNING=true && wrangler d1 execute DB --command",
     "sql-command-local": "export NO_D1_WARNING=true && wrangler d1 execute DB --local --command"
