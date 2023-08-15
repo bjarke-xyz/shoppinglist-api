@@ -11,7 +11,12 @@ export const userInfoStore = new AsyncLocalStorage<DecodedJwt | null>();
 
 const logger = getLogger("api.auth");
 
-export const authProtectedRoutes = ["/api/admin", "/api/items", "/api/lists"];
+export const authProtectedRoutes = [
+  "/api/admin",
+  "/api/items",
+  "/api/lists",
+  "/api/sse/ws",
+];
 
 export async function authMiddleware(
   request: Request,

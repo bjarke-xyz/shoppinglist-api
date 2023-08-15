@@ -2,10 +2,10 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import { ItemsRepository } from "../lib/items";
+import { ListsRepository } from "../lib/lists";
+import { WsGatewayClient } from "../lib/ws-gateway";
 import { Env } from "../types";
 import { getUserInfo } from "./auth";
-import { ListsRepository } from "../lib/lists";
-import { EventCoordinatorClient } from "../lib/do/event-coordinator";
 
 export const itemsApi = new Hono<{ Bindings: Env }>();
 
@@ -63,10 +63,14 @@ itemsApi.delete("/:id", async (c) => {
     const listsRepository = ListsRepository.New(c.env);
     const lists = await listsRepository.getLists(user.sub);
     for (const list of lists) {
-      const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
-      await eventCoordinatorClient.itemDeleted(c.req.header("Client-ID"), {
+      const wsClient = WsGatewayClient.fromList(c.env, list.id);
+      await wsClient.itemDeleted(c.req.header("Client-ID"), {
         itemId,
       });
+      // const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+      // await eventCoordinatorClient.itemDeleted(c.req.header("Client-ID"), {
+      //   itemId,
+      // });
     }
   };
   c.executionCtx.waitUntil(notifyFunc());

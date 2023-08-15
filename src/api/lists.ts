@@ -3,9 +3,9 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { ItemsRepository } from "../lib/items";
 import { ListsRepository } from "../lib/lists";
+import { WsGatewayClient } from "../lib/ws-gateway";
 import { Env } from "../types";
 import { getUserInfo } from "./auth";
-import { EventCoordinatorClient } from "../lib/do/event-coordinator";
 
 export const listsApi = new Hono<{ Bindings: Env }>();
 
@@ -97,13 +97,20 @@ listsApi.post(
     }
     await listsRepository.addToList(list.id, item.id);
     const listItems = await listsRepository.getListItems(list.id);
-    const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+    const wsClient = WsGatewayClient.fromList(c.env, list.id);
     c.executionCtx.waitUntil(
-      eventCoordinatorClient.listItemAdded(c.req.header("Client-ID"), {
+      wsClient.listItemAdded(c.req.header("Client-ID"), {
         listItems: listItems,
         addedItem: item,
       })
     );
+    // const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+    // c.executionCtx.waitUntil(
+    //   eventCoordinatorClient.listItemAdded(c.req.header("Client-ID"), {
+    //     listItems: listItems,
+    //     addedItem: item,
+    //   })
+    // );
     const response = {
       listItems,
       addedItem: item,
@@ -125,12 +132,18 @@ listsApi.patch(
     }
     const input: { itemIds: string[] } = await c.req.json();
     await listsRepository.removeFromList(list.id, input.itemIds);
-    const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+    const wsClient = WsGatewayClient.fromList(c.env, list.id);
     c.executionCtx.waitUntil(
-      eventCoordinatorClient.listItemsRemoved(c.req.header("Client-ID"), {
+      wsClient.listItemsRemoved(c.req.header("Client-ID"), {
         itemIds: input.itemIds,
       })
     );
+    // const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+    // c.executionCtx.waitUntil(
+    //   eventCoordinatorClient.listItemsRemoved(c.req.header("Client-ID"), {
+    //     itemIds: input.itemIds,
+    //   })
+    // );
     // TODO: return 204 empty
     return c.json(null);
   }
@@ -150,13 +163,20 @@ listsApi.patch(
     const input: { crossed: boolean } = await c.req.json();
     const itemId = c.req.param("itemId");
     await listsRepository.crossListItem(list.id, itemId, input.crossed);
-    const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+    const wsClient = WsGatewayClient.fromList(c.env, list.id);
     c.executionCtx.waitUntil(
-      eventCoordinatorClient.listItemCrossed(c.req.header("Client-ID"), {
+      wsClient.listItemCrossed(c.req.header("Client-ID"), {
         itemId: itemId,
         crossed: input.crossed,
       })
     );
+    // const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
+    // c.executionCtx.waitUntil(
+    //   eventCoordinatorClient.listItemCrossed(c.req.header("Client-ID"), {
+    //     itemId: itemId,
+    //     crossed: input.crossed,
+    //   })
+    // );
     // TODO: return 204 empty
     return c.json(null);
   }
