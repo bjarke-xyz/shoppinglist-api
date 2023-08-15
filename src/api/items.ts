@@ -67,10 +67,6 @@ itemsApi.delete("/:id", async (c) => {
       await wsClient.itemDeleted(c.req.header("Client-ID"), {
         itemId,
       });
-      // const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
-      // await eventCoordinatorClient.itemDeleted(c.req.header("Client-ID"), {
-      //   itemId,
-      // });
     }
   };
   c.executionCtx.waitUntil(notifyFunc());

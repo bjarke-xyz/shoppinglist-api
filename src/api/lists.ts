@@ -104,13 +104,6 @@ listsApi.post(
         addedItem: item,
       })
     );
-    // const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
-    // c.executionCtx.waitUntil(
-    //   eventCoordinatorClient.listItemAdded(c.req.header("Client-ID"), {
-    //     listItems: listItems,
-    //     addedItem: item,
-    //   })
-    // );
     const response = {
       listItems,
       addedItem: item,
@@ -138,12 +131,6 @@ listsApi.patch(
         itemIds: input.itemIds,
       })
     );
-    // const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
-    // c.executionCtx.waitUntil(
-    //   eventCoordinatorClient.listItemsRemoved(c.req.header("Client-ID"), {
-    //     itemIds: input.itemIds,
-    //   })
-    // );
     // TODO: return 204 empty
     return c.json(null);
   }
@@ -170,13 +157,6 @@ listsApi.patch(
         crossed: input.crossed,
       })
     );
-    // const eventCoordinatorClient = new EventCoordinatorClient(c.env, list.id);
-    // c.executionCtx.waitUntil(
-    //   eventCoordinatorClient.listItemCrossed(c.req.header("Client-ID"), {
-    //     itemId: itemId,
-    //     crossed: input.crossed,
-    //   })
-    // );
     // TODO: return 204 empty
     return c.json(null);
   }

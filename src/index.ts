@@ -13,8 +13,6 @@ import { ListsRepository } from "./lib/lists";
 import { ItemsRepository } from "./lib/items";
 import { demoUserIds } from "./util/demo-users";
 
-export { EventCoordinator } from "./lib/do/event-coordinator";
-
 const app = new Hono<{ Bindings: Env }>();
 app.use(
   "*",
