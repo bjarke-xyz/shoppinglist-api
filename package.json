@@ -5,7 +5,7 @@
     "@cloudflare/workers-types": "^4.20230307.0",
     "@miniflare/tre": "^3.0.0-next.13",
     "typescript": "^5.0.2",
-    "vitest": "^0.29.7",
+    "vitest": "^0.34.6",
     "wrangler": "^3.1.0"
   },
   "private": true,
@@ -24,9 +24,9 @@
     "hono": "^3.1.5",
     "jose": "^4.14.0",
     "jwt-decode": "^3.1.2",
-    "kysely": "^0.24.2",
+    "kysely": "^0.26.3",
     "kysely-d1": "^0.3.0",
-    "nanoid": "^4.0.2",
+    "nanoid": "^5.0.1",
     "zod": "^3.21.4"
   }
 }
