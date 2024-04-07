@@ -1,8 +1,8 @@
 import { getLogger } from "../util/logger";
-import decodeJwt from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 import { getUnixTime, parse, parseISO } from "date-fns";
 import { Env } from "../types";
-import * as jose from "jose";
+import { importX509, jwtVerify } from "jose";
 
 export class FirebaseAuth {
   private readonly logger = getLogger("FirebaseAuth");
@@ -10,7 +10,7 @@ export class FirebaseAuth {
     private readonly webApiKey: string,
     private readonly firebaseProjectId: string,
     private readonly SHOPPINGLIST: KVNamespace
-  ) {}
+  ) { }
 
   public static New(env: Env) {
     return new FirebaseAuth(
@@ -77,11 +77,11 @@ export class FirebaseAuth {
 
   public decodeIdToken(idToken: string | undefined): DecodedJwt {
     if (!idToken) throw new Error("No token provided");
-    return decodeJwt(idToken) as DecodedJwt;
+    return jwtDecode(idToken) as DecodedJwt;
   }
 
   public decodeIdTokenHeader(idToken: string): JwtHeader {
-    return decodeJwt(idToken, { header: true }) as JwtHeader;
+    return jwtDecode(idToken, { header: true }) as JwtHeader;
   }
 
   public async validateIdToken(idToken: string | undefined): Promise<void> {
@@ -100,8 +100,8 @@ export class FirebaseAuth {
       throw new Error(`No matching public key found for kid '${header.kid}'`);
     }
     const certificate = publicKeys[publicKeyKey];
-    const publicKey = await jose.importX509(certificate, header.alg);
-    await jose.jwtVerify(idToken, publicKey, {
+    const publicKey = await importX509(certificate, header.alg);
+    await jwtVerify(idToken, publicKey, {
       issuer,
       audience: this.firebaseProjectId,
     });
